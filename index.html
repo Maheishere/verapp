@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Responsible Prompting Tool</title>
     <style>
         body {
@@ -23,7 +23,7 @@
             background: #fff;
             padding: 1.5rem;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
         h1, h2 {
             border-bottom: 2px solid #eee;
@@ -36,7 +36,7 @@
             border: 1px solid #ddd;
             border-radius: 6px;
             font-size: 1rem;
-            box-sizing: border-box; /* Important for 100% width */
+            box-sizing: border-box;
         }
         button {
             background: #007bff;
@@ -105,7 +105,7 @@
             <section>
                 <h2>2. Output</h2>
                 <div id="output-display" style="background: #eee; padding: 1rem; border-radius: 6px; min-height: 100px;">
-                    </div>
+                </div>
             </section>
         </div>
 
@@ -117,14 +117,13 @@
             <section>
                 <h2>Prompt Heatmap</h2>
                 <div id="heatmap">
-                    </div>
+                </div>
             </section>
             
             <section>
                 <h2>Key Connections</h2>
                 <div id="connections">
-                    <ul>
-                        </ul>
+                    <ul></ul>
                 </div>
             </section>
         </div>
@@ -145,15 +144,12 @@
         let currentPrompt = "";
         let currentOutput = "";
 
-        // --- Event Listeners ---
-
+        // Event listeners
         generateBtn.addEventListener('click', handleGenerate);
         analyzeBtn.addEventListener('click', handleAnalyze);
 
-        // --- Core Functions ---
-
         async function handleGenerate() {
-            currentPrompt = promptInput.value;
+            currentPrompt = promptInput.value.trim();
             if (!currentPrompt) {
                 showError("Please enter a prompt.");
                 return;
@@ -163,36 +159,32 @@
             clearResults();
 
             try {
-                // This is the CRITICAL part
-                // We use method: 'POST' and send a JSON body
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        prompt: currentPrompt
-                    })
+                    body: JSON.stringify({ prompt: currentPrompt })
                 });
 
                 if (!response.ok) {
-                    // Handle server errors (like 500)
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                    const text = await response.text();
+                    throw new Error(`Server error: ${response.status} ${response.statusText} - ${text}`);
                 }
 
                 const data = await response.json();
-                
+
                 if (data.error) {
                     throw new Error(data.error);
                 }
 
                 currentOutput = data.output;
                 outputDisplay.textContent = currentOutput;
-                analyzeBtn.disabled = false; // Enable the analyze button
+                analyzeBtn.disabled = false;
 
             } catch (error) {
                 showError(error.message);
-                console.error("Fetch error:", error);
+                console.error("Fetch error (generate):", error);
             } finally {
                 setLoading(false);
             }
@@ -207,7 +199,6 @@
             setLoading(true);
 
             try {
-                // Again, use POST to send the data to the API
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: {
@@ -220,7 +211,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                    const text = await response.text();
+                    throw new Error(`Server error: ${response.status} ${response.statusText} - ${text}`);
                 }
 
                 const data = await response.json();
@@ -229,44 +221,45 @@
                     throw new Error(data.error);
                 }
 
-                // Render the results
                 renderHeatmap(data.heatmap_data);
                 renderConnections(data.connections);
 
             } catch (error) {
                 showError(error.message);
-                console.error("Fetch error:", error);
+                console.error("Fetch error (analyze):", error);
             } finally {
                 setLoading(false);
             }
         }
 
-        // --- Helper Functions ---
-
         function renderHeatmap(heatmapData) {
-            heatmapDiv.innerHTML = ""; // Clear old heatmap
-            if (!heatmapData) return;
+            heatmapDiv.innerHTML = "";
+            if (!Array.isArray(heatmapData)) return;
 
             heatmapData.forEach(item => {
                 const span = document.createElement('span');
-                span.textContent = item.word + " "; // Add space
-                
-                // Calculate opacity based on score (1=0.0, 5=1.0)
-                const opacity = (item.impact_score - 1) / 4;
+                span.textContent = item.word + " ";
+
+                const score = Number(item.impact_score) || 0;
+                const clamped = Math.max(1, Math.min(5, score));
+                const opacity = (clamped - 1) / 4;
+
                 span.style.backgroundColor = `rgba(255, 0, 0, ${opacity})`;
-                
                 heatmapDiv.appendChild(span);
             });
         }
 
         function renderConnections(connectionsData) {
             const ul = connectionsDiv.querySelector('ul');
-            ul.innerHTML = ""; // Clear old connections
-            if (!connectionsData) return;
+            ul.innerHTML = "";
+            if (!Array.isArray(connectionsData)) return;
 
             connectionsData.forEach(item => {
                 const li = document.createElement('li');
-                li.innerHTML = `<strong>"${item.prompt_word}"</strong> (Score: ${item.impact_score}) influenced: <em>"${item.influenced_output_words.join(", ")}"</em>`;
+                const words = Array.isArray(item.influenced_output_words)
+                    ? item.influenced_output_words.join(", ")
+                    : "";
+                li.innerHTML = `<strong>"${item.prompt_word}"</strong> (Score: ${item.impact_score}) influenced: <em>"${words}"</em>`;
                 ul.appendChild(li);
             });
         }
@@ -280,7 +273,6 @@
             } else {
                 loader.style.display = 'none';
                 generateBtn.disabled = false;
-                // Only re-enable analyze if we have output
                 analyzeBtn.disabled = !currentOutput;
             }
         }
@@ -289,7 +281,7 @@
             errorDisplay.textContent = message;
             errorDisplay.style.display = 'block';
         }
-        
+
         function clearResults() {
             outputDisplay.textContent = "";
             heatmapDiv.innerHTML = "";

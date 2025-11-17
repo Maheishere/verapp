@@ -19,7 +19,7 @@ except KeyError:
 
 # --- 🔴 CORRECTED MODEL SETUP ---
 # Use 1.5-Flash for fast, simple text generation
-generation_model = genai.GenerativeModel('gemini-2.5-flash')
+generation_model = genai.GenerativeModel('gemini-2.0-flash')
 # Use 1.5-Pro for smart, complex analysis and JSON output
 analysis_model = genai.GenerativeModel('gemini-2.5-flash')
 # --- END OF CORRECTION ---
